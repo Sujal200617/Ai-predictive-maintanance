@@ -904,4 +904,4 @@ def settings():
     st.subheader("System Configuration")
 
     auto_update = st.checkbox(
-        "Enable automatic monitoring
+        "Enable automatic monitoring"
