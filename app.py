@@ -17,7 +17,7 @@ st.set_page_config(
 
 
 # =========================================================
-# PROFESSIONAL CSS DESIGN
+# PROFESSIONAL CSS
 # =========================================================
 
 st.markdown("""
@@ -25,24 +25,20 @@ st.markdown("""
 
 .stApp {
     background-color: #0B1120;
+}
+
+.main-title {
+    font-size: 46px;
+    font-weight: 800;
     color: white;
 }
 
-/* Main Title */
-.main-title {
-    font-size: 48px;
-    font-weight: 800;
-    color: #FFFFFF;
-    margin-bottom: 5px;
-}
-
 .subtitle {
-    font-size: 18px;
+    font-size: 17px;
     color: #94A3B8;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
 }
 
-/* Cards */
 .metric-card {
     background-color: #111C2E;
     padding: 20px;
@@ -52,53 +48,42 @@ st.markdown("""
 }
 
 .metric-title {
-    font-size: 15px;
     color: #94A3B8;
+    font-size: 15px;
 }
 
 .metric-value {
-    font-size: 30px;
-    font-weight: bold;
     color: white;
-}
-
-/* Status Cards */
-.status-card {
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
-    margin-top: 10px;
+    font-size: 28px;
+    font-weight: bold;
 }
 
 .healthy {
     background-color: #064E3B;
-    border: 1px solid #10B981;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
 }
 
 .warning {
     background-color: #78350F;
-    border: 1px solid #F59E0B;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
 }
 
 .danger {
     background-color: #7F1D1D;
-    border: 1px solid #EF4444;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
 }
 
-/* Recommendation Box */
 .recommendation {
     background-color: #111C2E;
     padding: 20px;
     border-radius: 15px;
     border-left: 5px solid #38BDF8;
-    margin-top: 15px;
-}
-
-.section-title {
-    font-size: 24px;
-    font-weight: bold;
-    margin-top: 20px;
-    margin-bottom: 15px;
 }
 
 </style>
@@ -109,7 +94,7 @@ st.markdown("""
 # SIDEBAR
 # =========================================================
 
-st.sidebar.markdown("# ⚙️ Control Panel")
+st.sidebar.title("⚙️ Control Panel")
 
 machine = st.sidebar.selectbox(
     "Select Machine",
@@ -121,13 +106,7 @@ machine = st.sidebar.selectbox(
 )
 
 st.sidebar.markdown("---")
-
-st.sidebar.markdown("### 🧠 System Information")
-
-st.sidebar.info(
-    "This AI Predictive Maintenance System analyses machine parameters "
-    "and estimates the maintenance risk."
-)
+st.sidebar.subheader("📡 Live Sensor Inputs")
 
 
 # =========================================================
@@ -138,35 +117,10 @@ if machine == "Reciprocating Pump":
 
     machine_icon = "🔧"
 
-    st.sidebar.markdown("### 📡 Sensor Inputs")
-
-    temperature = st.sidebar.slider(
-        "Temperature (°C)",
-        20.0,
-        120.0,
-        45.0
-    )
-
-    vibration = st.sidebar.slider(
-        "Vibration (mm/s)",
-        0.0,
-        20.0,
-        2.0
-    )
-
-    pressure = st.sidebar.slider(
-        "Pressure (bar)",
-        0.0,
-        20.0,
-        5.0
-    )
-
-    rpm = st.sidebar.slider(
-        "RPM",
-        100,
-        3000,
-        1000
-    )
+    temperature = st.sidebar.slider("Temperature (°C)", 20.0, 120.0, 45.0)
+    vibration = st.sidebar.slider("Vibration (mm/s)", 0.0, 20.0, 2.0)
+    pressure = st.sidebar.slider("Pressure (bar)", 0.0, 20.0, 5.0)
+    rpm = st.sidebar.slider("RPM", 100, 3000, 1000)
 
     parameters = {
         "Temperature": temperature,
@@ -175,19 +129,20 @@ if machine == "Reciprocating Pump":
         "RPM": rpm
     }
 
-    risk = 0
+    # FAULT SEVERITY CALCULATION
+    fault_scores = {
+        "Temperature": max(0, min(100, (temperature - 70) * 2)),
+        "Vibration": max(0, min(100, vibration * 10)),
+        "Pressure": max(0, min(100, abs(pressure - 8) * 12)),
+        "RPM": max(0, min(100, (rpm - 1800) / 12))
+    }
 
-    if temperature > 85:
-        risk += 30
-
-    if vibration > 8:
-        risk += 35
-
-    if pressure > 15 or pressure < 2:
-        risk += 20
-
-    if rpm > 2500:
-        risk += 15
+    fault_causes = {
+        "Temperature": "Possible bearing overheating or insufficient cooling.",
+        "Vibration": "Possible bearing wear, misalignment or mechanical imbalance.",
+        "Pressure": "Possible leakage, valve problem or pressure system fault.",
+        "RPM": "Possible motor speed or drive system abnormality."
+    }
 
 
 # =========================================================
@@ -198,35 +153,10 @@ elif machine == "Hydraulic Turbine":
 
     machine_icon = "💧"
 
-    st.sidebar.markdown("### 📡 Sensor Inputs")
-
-    temperature = st.sidebar.slider(
-        "Temperature (°C)",
-        10.0,
-        120.0,
-        40.0
-    )
-
-    vibration = st.sidebar.slider(
-        "Vibration (mm/s)",
-        0.0,
-        20.0,
-        2.0
-    )
-
-    water_flow = st.sidebar.slider(
-        "Water Flow (L/s)",
-        10.0,
-        1000.0,
-        200.0
-    )
-
-    rpm = st.sidebar.slider(
-        "RPM",
-        100,
-        5000,
-        1500
-    )
+    temperature = st.sidebar.slider("Temperature (°C)", 10.0, 120.0, 40.0)
+    vibration = st.sidebar.slider("Vibration (mm/s)", 0.0, 20.0, 2.0)
+    water_flow = st.sidebar.slider("Water Flow (L/s)", 10.0, 1000.0, 200.0)
+    rpm = st.sidebar.slider("RPM", 100, 5000, 1500)
 
     parameters = {
         "Temperature": temperature,
@@ -235,57 +165,47 @@ elif machine == "Hydraulic Turbine":
         "RPM": rpm
     }
 
-    risk = 0
+    fault_scores = {
+        "Temperature": max(0, min(100, (temperature - 70) * 2)),
+        "Vibration": max(0, min(100, vibration * 11)),
+        "Water Flow": max(0, min(100, (100 - water_flow) * 0.8)),
+        "RPM": max(0, min(100, (rpm - 3500) / 15))
+    }
 
-    if temperature > 80:
-        risk += 25
-
-    if vibration > 7:
-        risk += 35
-
-    if water_flow < 50:
-        risk += 20
-
-    if rpm > 4000:
-        risk += 20
+    fault_causes = {
+        "Temperature": "Possible bearing overheating.",
+        "Vibration": "Possible turbine imbalance or bearing fault.",
+        "Water Flow": "Possible blockage, leakage or reduced water supply.",
+        "RPM": "Possible turbine speed control problem."
+    }
 
 
 # =========================================================
 # PETROL ENGINE
 # =========================================================
 
-elif machine == "Petrol Engine":
+else:
 
     machine_icon = "🚗"
 
-    st.sidebar.markdown("### 📡 Sensor Inputs")
-
     temperature = st.sidebar.slider(
         "Engine Temperature (°C)",
-        20.0,
-        140.0,
-        85.0
+        20.0, 140.0, 85.0
     )
 
     vibration = st.sidebar.slider(
         "Vibration (mm/s)",
-        0.0,
-        20.0,
-        3.0
+        0.0, 20.0, 3.0
     )
 
     rpm = st.sidebar.slider(
         "Engine RPM",
-        500,
-        8000,
-        2500
+        500, 8000, 2500
     )
 
     oil_pressure = st.sidebar.slider(
         "Oil Pressure (bar)",
-        0.0,
-        10.0,
-        4.0
+        0.0, 10.0, 4.0
     )
 
     parameters = {
@@ -295,59 +215,62 @@ elif machine == "Petrol Engine":
         "Oil Pressure": oil_pressure
     }
 
-    risk = 0
+    fault_scores = {
+        "Temperature": max(0, min(100, (temperature - 95) * 3)),
+        "Vibration": max(0, min(100, vibration * 10)),
+        "RPM": max(0, min(100, (rpm - 5500) / 20)),
+        "Oil Pressure": max(0, min(100, (2.5 - oil_pressure) * 40))
+    }
 
-    if temperature > 110:
-        risk += 30
-
-    if vibration > 8:
-        risk += 30
-
-    if rpm > 6000:
-        risk += 15
-
-    if oil_pressure < 1.5:
-        risk += 25
+    fault_causes = {
+        "Temperature": "Possible engine overheating or cooling system problem.",
+        "Vibration": "Possible engine imbalance, mounting or mechanical problem.",
+        "RPM": "Possible excessive engine speed or load.",
+        "Oil Pressure": "Possible lubrication system or oil pump problem."
+    }
 
 
 # =========================================================
-# LIMIT RISK
+# CALCULATE OVERALL RISK
 # =========================================================
 
+risk = int(sum(fault_scores.values()) / len(fault_scores))
 risk = min(risk, 100)
+
 health_score = 100 - risk
 
 
 # =========================================================
-# MACHINE CONDITION
+# FIND MAIN FAULT LOCATION
+# =========================================================
+
+main_fault = max(fault_scores, key=fault_scores.get)
+main_fault_score = fault_scores[main_fault]
+
+fault_description = fault_causes[main_fault]
+
+
+# =========================================================
+# MACHINE STATUS
 # =========================================================
 
 if risk <= 20:
+
     status = "HEALTHY"
     status_icon = "🟢"
     status_class = "healthy"
-    recommendation = (
-        "Machine parameters are within the normal operating range. "
-        "Continue regular monitoring and preventive maintenance."
-    )
 
 elif risk <= 50:
+
     status = "WARNING"
     status_icon = "🟡"
     status_class = "warning"
-    recommendation = (
-        "Some machine parameters require attention. "
-        "Inspect the machine and schedule maintenance soon."
-    )
 
 else:
+
     status = "HIGH RISK"
     status_icon = "🔴"
     status_class = "danger"
-    recommendation = (
-        "Abnormal operating conditions detected. "
-        "A detailed inspection and maintenance check are recommended."
-    )
 
 
 # =========================================================
@@ -361,45 +284,35 @@ st.markdown(
     </div>
 
     <div class="subtitle">
-        Intelligent machine monitoring and maintenance risk analysis
+        Intelligent Machine Monitoring • Fault Detection • Failure Risk Prediction
     </div>
     """,
     unsafe_allow_html=True
 )
 
-
-# =========================================================
-# MACHINE INFORMATION
-# =========================================================
-
-st.markdown(
-    f"### 🏭 Selected Machine: {machine}"
-)
+st.subheader(f"🏭 Selected Machine: {machine}")
 
 
 # =========================================================
-# METRIC CARDS
+# SENSOR METRIC CARDS
 # =========================================================
 
 cols = st.columns(len(parameters))
 
-for column, (name, value) in zip(cols, parameters.items()):
+for col, (name, value) in zip(cols, parameters.items()):
 
-    with column:
+    with col:
 
-        if name == "Temperature":
+        if "Temperature" in name:
             unit = "°C"
 
-        elif name == "Vibration":
+        elif "Vibration" in name:
             unit = "mm/s"
 
-        elif name == "Pressure":
+        elif "Pressure" in name:
             unit = "bar"
 
-        elif name == "Oil Pressure":
-            unit = "bar"
-
-        elif name == "Water Flow":
+        elif "Flow" in name:
             unit = "L/s"
 
         else:
@@ -416,23 +329,22 @@ for column, (name, value) in zip(cols, parameters.items()):
         )
 
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
 
 
 # =========================================================
-# MACHINE STATUS AND HEALTH SCORE
+# MACHINE STATUS
 # =========================================================
 
-left_column, right_column = st.columns([1, 1])
+col1, col2 = st.columns(2)
 
+with col1:
 
-with left_column:
-
-    st.markdown("## Machine Condition")
+    st.subheader("Machine Condition")
 
     st.markdown(
         f"""
-        <div class="status-card {status_class}">
+        <div class="{status_class}">
             <h1>{status_icon} {status}</h1>
             <h3>Failure Risk: {risk}%</h3>
         </div>
@@ -442,21 +354,21 @@ with left_column:
 
     st.progress(health_score / 100)
 
-    st.write(f"### Machine Health Score: {health_score} / 100")
+    st.write(f"### Machine Health Score: {health_score}/100")
 
 
-with right_column:
+with col2:
 
-    st.markdown("## 📊 AI Risk Analysis")
+    st.subheader("AI Failure Risk")
 
-    figure = go.Figure(
+    gauge = go.Figure(
         go.Indicator(
             mode="gauge+number",
             value=risk,
-            title={"text": "Failure Risk (%)"},
+            number={"suffix": "%"},
+            title={"text": "Overall Failure Risk"},
             gauge={
                 "axis": {"range": [0, 100]},
-                "bar": {"thickness": 0.75},
                 "steps": [
                     {"range": [0, 20]},
                     {"range": [20, 50]},
@@ -466,36 +378,125 @@ with right_column:
         )
     )
 
-    figure.update_layout(
+    gauge.update_layout(
         height=350,
         paper_bgcolor="#0B1120",
         font={"color": "white"}
     )
 
-    st.plotly_chart(
-        figure,
-        use_container_width=True
+    st.plotly_chart(gauge, use_container_width=True)
+
+
+# =========================================================
+# NEW FAULT LOCATION CHART
+# =========================================================
+
+st.markdown("---")
+
+st.header("🚨 Fault Detection & Fault Location")
+
+st.info(
+    "The chart below identifies which machine parameter is showing "
+    "the highest abnormality."
+)
+
+fault_df = pd.DataFrame({
+    "Machine Parameter": list(fault_scores.keys()),
+    "Fault Severity (%)": list(fault_scores.values())
+})
+
+fault_chart = go.Figure()
+
+fault_chart.add_trace(
+    go.Bar(
+        x=fault_df["Machine Parameter"],
+        y=fault_df["Fault Severity (%)"],
+        text=fault_df["Fault Severity (%)"].round(1),
+        textposition="auto"
+    )
+)
+
+fault_chart.update_layout(
+    title="Fault Severity by Machine Parameter",
+    xaxis_title="Machine Parameter",
+    yaxis_title="Fault Severity (%)",
+    yaxis=dict(range=[0, 100]),
+    height=450,
+    paper_bgcolor="#0B1120",
+    plot_bgcolor="#111C2E",
+    font={"color": "white"}
+)
+
+st.plotly_chart(fault_chart, use_container_width=True)
+
+
+# =========================================================
+# FAULT DIAGNOSIS
+# =========================================================
+
+st.markdown("## 🤖 AI Fault Diagnosis")
+
+if main_fault_score < 20:
+
+    st.success(
+        f"🟢 No significant fault detected. "
+        f"The highest monitored parameter is {main_fault}, "
+        f"but it is currently within a safe range."
+    )
+
+else:
+
+    if main_fault_score <= 50:
+        level = "MODERATE WARNING"
+        icon = "🟡"
+    else:
+        level = "CRITICAL FAULT"
+        icon = "🔴"
+
+    st.markdown(
+        f"""
+        <div class="recommendation">
+            <h2>{icon} {level}</h2>
+            <h3>Fault Location: {main_fault}</h3>
+            <h3>Fault Severity: {main_fault_score:.1f}%</h3>
+            <p><b>AI Diagnosis:</b> {fault_description}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
 
 # =========================================================
-# SENSOR ANALYSIS CHART
+# PARAMETER STATUS TABLE
 # =========================================================
 
-st.markdown("## 📈 Sensor Parameter Analysis")
+st.markdown("## 📊 Individual Parameter Analysis")
 
-parameter_names = list(parameters.keys())
-parameter_values = list(parameters.values())
+analysis_rows = []
 
-chart_data = pd.DataFrame(
-    {
-        "Parameter": parameter_names,
-        "Value": parameter_values
-    }
-)
+for parameter, score in fault_scores.items():
 
-st.bar_chart(
-    chart_data.set_index("Parameter")
+    if score < 20:
+        condition = "🟢 Normal"
+
+    elif score < 50:
+        condition = "🟡 Warning"
+
+    else:
+        condition = "🔴 Critical"
+
+    analysis_rows.append({
+        "Parameter": parameter,
+        "Fault Severity (%)": round(score, 1),
+        "Condition": condition
+    })
+
+analysis_df = pd.DataFrame(analysis_rows)
+
+st.dataframe(
+    analysis_df,
+    use_container_width=True,
+    hide_index=True
 )
 
 
@@ -505,10 +506,24 @@ st.bar_chart(
 
 st.markdown("## 🔧 AI Maintenance Recommendation")
 
+if main_fault_score < 20:
+
+    recommendation = (
+        "Continue normal operation and follow the regular "
+        "preventive maintenance schedule."
+    )
+
+else:
+
+    recommendation = (
+        f"Inspect the {main_fault} system first. "
+        f"{fault_description}"
+    )
+
 st.markdown(
     f"""
     <div class="recommendation">
-        <h3>🤖 Recommendation</h3>
+        <h3>Recommended Action</h3>
         <p>{recommendation}</p>
     </div>
     """,
@@ -520,63 +535,15 @@ st.markdown(
 # SENSOR DETAILS
 # =========================================================
 
-st.markdown("## 📡 Recommended Sensors")
+st.markdown("## 📡 Sensors Used")
 
-if machine == "Reciprocating Pump":
-
-    sensor_data = {
-        "Sensor": [
-            "Temperature Sensor",
-            "Vibration Sensor",
-            "Pressure Sensor",
-            "RPM Sensor"
-        ],
-        "Purpose": [
-            "Detects overheating",
-            "Detects abnormal vibration",
-            "Measures pump pressure",
-            "Measures motor speed"
-        ]
-    }
-
-
-elif machine == "Hydraulic Turbine":
-
-    sensor_data = {
-        "Sensor": [
-            "Temperature Sensor",
-            "Vibration Sensor",
-            "Water Flow Sensor",
-            "RPM Sensor"
-        ],
-        "Purpose": [
-            "Monitors bearing temperature",
-            "Detects turbine imbalance",
-            "Measures water flow",
-            "Measures turbine rotational speed"
-        ]
-    }
-
-
-else:
-
-    sensor_data = {
-        "Sensor": [
-            "Engine Temperature Sensor",
-            "Vibration Sensor",
-            "RPM Sensor",
-            "Oil Pressure Sensor"
-        ],
-        "Purpose": [
-            "Detects engine overheating",
-            "Detects abnormal vibration",
-            "Measures engine speed",
-            "Monitors lubrication pressure"
-        ]
-    }
-
-
-sensor_df = pd.DataFrame(sensor_data)
+sensor_df = pd.DataFrame({
+    "Parameter": list(parameters.keys()),
+    "Purpose": [
+        "Monitors machine operating condition"
+        for i in parameters
+    ]
+})
 
 st.dataframe(
     sensor_df,
@@ -586,7 +553,7 @@ st.dataframe(
 
 
 # =========================================================
-# SYSTEM STATUS
+# FOOTER
 # =========================================================
 
 st.markdown("---")
@@ -594,6 +561,6 @@ st.markdown("---")
 current_time = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
 st.caption(
-    f"🤖 AI Predictive Maintenance System | "
+    f"⚙️ AI Predictive Maintenance System | "
     f"Last Analysis: {current_time}"
 )
