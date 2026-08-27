@@ -21,24 +21,25 @@ st.set_page_config(
 
 MACHINES = {
 
-    "💧 Water Pump": {
+    "🚗 Petrol Engine": {
 
         "description": """
-        This module monitors the health of a water pump by analysing
-        temperature, vibration, motor current, RPM, pressure and flow rate.
+        This module monitors the health of a petrol engine by analysing
+        engine temperature, vibration, engine RPM, oil pressure and battery voltage.
         """,
 
         "sensors": [
+
             {
-                "name": "Temperature",
+                "name": "Engine Temperature",
                 "unit": "°C",
                 "min": 20.0,
-                "max": 100.0,
-                "default": 45.0,
+                "max": 130.0,
+                "default": 85.0,
                 "step": 0.5,
-                "normal_min": 20,
-                "normal_max": 70,
-                "warning_max": 80
+                "normal_min": 70,
+                "normal_max": 100,
+                "warning_max": 110
             },
 
             {
@@ -54,76 +55,74 @@ MACHINES = {
             },
 
             {
-                "name": "Motor Current",
-                "unit": "A",
-                "min": 0.0,
-                "max": 8.0,
-                "default": 2.0,
-                "step": 0.1,
-                "normal_min": 0,
-                "normal_max": 3,
-                "warning_max": 4
-            },
-
-            {
-                "name": "RPM",
+                "name": "Engine RPM",
                 "unit": "RPM",
-                "min": 500,
-                "max": 3000,
-                "default": 1450,
-                "step": 10,
-                "normal_min": 1200,
-                "normal_max": 1800,
-                "warning_max": 2500
+                "min": 0,
+                "max": 7000,
+                "default": 1500,
+                "step": 50,
+                "normal_min": 700,
+                "normal_max": 4000,
+                "warning_max": 6000
             },
 
             {
-                "name": "Pressure",
+                "name": "Oil Pressure",
                 "unit": "bar",
                 "min": 0.0,
                 "max": 10.0,
-                "default": 4.5,
+                "default": 4.0,
                 "step": 0.1,
-                "normal_min": 3,
-                "normal_max": 7,
+                "normal_min": 2,
+                "normal_max": 6,
                 "warning_max": 8
             },
 
             {
-                "name": "Flow Rate",
-                "unit": "L/min",
+                "name": "Battery Voltage",
+                "unit": "V",
                 "min": 0.0,
-                "max": 50.0,
-                "default": 18.0,
-                "step": 0.5,
-                "normal_min": 10,
-                "normal_max": 30,
-                "warning_max": 40
+                "max": 16.0,
+                "default": 13.5,
+                "step": 0.1,
+                "normal_min": 12,
+                "normal_max": 14.5,
+                "warning_max": 15.5
             }
         ],
 
         "faults": {
 
             "High Temperature":
-            "Possible overheating. Inspect bearings, motor loading and cooling.",
+            "Possible engine overheating. Check the cooling system, coolant level and engine load.",
 
             "High Vibration":
-            "Possible bearing wear, misalignment, imbalance or loose mounting.",
+            "Possible engine imbalance, worn bearings or loose engine mounting.",
 
-            "High Current":
-            "Possible motor overload or excessive mechanical resistance.",
+            "Low RPM":
+            "Possible engine performance or fuel system problem.",
 
-            "Low Pressure":
-            "Possible leakage, blockage or pump performance problem.",
+            "High RPM":
+            "Possible excessive engine speed or abnormal operating condition.",
 
-            "Low Flow":
-            "Possible blockage, leakage or abnormal pump operation.",
+            "Low Oil Pressure":
+            "Possible lubrication problem. Inspect engine oil level and lubrication system.",
 
-            "Abnormal RPM":
-            "Check motor drive, coupling and pump load."
+            "High Oil Pressure":
+            "Possible restriction in the lubrication system.",
+
+            "Low Battery Voltage":
+            "Possible battery or charging system problem.",
+
+            "High Battery Voltage":
+            "Possible alternator or voltage regulator problem."
         }
     },
 
+
+    # ---------------------------------------------------
+    # RECIPROCATING PUMP
+    # ---------------------------------------------------
 
     "🔧 Reciprocating Pump": {
 
@@ -133,6 +132,7 @@ MACHINES = {
         """,
 
         "sensors": [
+
             {
                 "name": "Temperature",
                 "unit": "°C",
@@ -232,6 +232,10 @@ MACHINES = {
     },
 
 
+    # ---------------------------------------------------
+    # HYDRAULIC TURBINE
+    # ---------------------------------------------------
+
     "⚡ Hydraulic Turbine": {
 
         "description": """
@@ -240,6 +244,7 @@ MACHINES = {
         """,
 
         "sensors": [
+
             {
                 "name": "Temperature",
                 "unit": "°C",
@@ -337,7 +342,7 @@ if "history" not in st.session_state:
 
 
 # ---------------------------------------------------
-# HEALTH ANALYSIS FUNCTION
+# ANALYSIS FUNCTION
 # ---------------------------------------------------
 
 def analyse_machine(machine_name, sensor_data):
@@ -355,7 +360,7 @@ def analyse_machine(machine_name, sensor_data):
         warning_max = sensor["warning_max"]
 
         # TEMPERATURE
-        if name == "Temperature":
+        if "Temperature" in name:
 
             if value > warning_max:
                 risk += 30
@@ -387,7 +392,18 @@ def analyse_machine(machine_name, sensor_data):
                 risk += 15
                 problems.append("High Current")
 
-        # RPM
+        # ENGINE RPM
+        elif name == "Engine RPM":
+
+            if value < normal_min:
+                risk += 20
+                problems.append("Low RPM")
+
+            elif value > warning_max:
+                risk += 25
+                problems.append("High RPM")
+
+        # NORMAL RPM
         elif name == "RPM":
 
             if value < normal_min:
@@ -408,7 +424,18 @@ def analyse_machine(machine_name, sensor_data):
 
                 risk += 20
 
-        # PRESSURE
+        # OIL PRESSURE
+        elif name == "Oil Pressure":
+
+            if value < normal_min:
+                risk += 30
+                problems.append("Low Oil Pressure")
+
+            elif value > warning_max:
+                risk += 20
+                problems.append("High Oil Pressure")
+
+        # NORMAL PRESSURE
         elif "Pressure" in name:
 
             if value < normal_min:
@@ -419,6 +446,17 @@ def analyse_machine(machine_name, sensor_data):
                 risk += 20
                 problems.append("High Pressure")
 
+        # BATTERY VOLTAGE
+        elif name == "Battery Voltage":
+
+            if value < normal_min:
+                risk += 20
+                problems.append("Low Battery Voltage")
+
+            elif value > warning_max:
+                risk += 20
+                problems.append("High Battery Voltage")
+
         # FLOW
         elif "Flow" in name:
 
@@ -428,14 +466,13 @@ def analyse_machine(machine_name, sensor_data):
 
     risk = min(risk, 100)
 
-    # Remove duplicate problems
     problems = list(dict.fromkeys(problems))
 
     return risk, problems
 
 
 # ---------------------------------------------------
-# APP HEADER
+# HEADER
 # ---------------------------------------------------
 
 st.title("⚙️ AI-Based Multipurpose Predictive Maintenance System")
@@ -445,7 +482,7 @@ st.write(
 )
 
 st.caption(
-    "Water Pump • Reciprocating Pump • Hydraulic Turbine"
+    "Petrol Engine • Reciprocating Pump • Hydraulic Turbine"
 )
 
 
@@ -467,7 +504,7 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("📡 Sensor Inputs")
 
 st.sidebar.caption(
-    "Current version uses simulated/manual sensor values."
+    "Adjust the sensor values to simulate different machine conditions."
 )
 
 
@@ -487,7 +524,6 @@ for sensor in machine["sensors"]:
         max_value=sensor["max"],
         value=sensor["default"],
         step=sensor["step"]
-
     )
 
     sensor_copy = sensor.copy()
@@ -511,17 +547,14 @@ risk, problems = analyse_machine(
 # ---------------------------------------------------
 
 if risk < 25:
-
     status = "HEALTHY"
     status_icon = "🟢"
 
 elif risk < 60:
-
     status = "WARNING"
     status_icon = "🟡"
 
 else:
-
     status = "FAULT RISK"
     status_icon = "🔴"
 
@@ -571,14 +604,14 @@ left_column, right_column = st.columns(2)
 
 with left_column:
 
-    st.subheader("🤖 AI Health Analysis")
+    st.subheader("🤖 Predictive Health Analysis")
 
     st.progress(risk / 100)
 
     if status == "HEALTHY":
 
         st.success(
-            "The machine is operating within the normal demonstration range."
+            "The machine is operating within the normal range."
         )
 
     elif status == "WARNING":
@@ -593,16 +626,11 @@ with left_column:
             "High-risk operating condition detected. Maintenance attention is required."
         )
 
-
     st.subheader("🔍 Possible Fault Diagnosis")
 
     if len(problems) == 0:
 
         st.success("No abnormal condition detected.")
-
-        st.write(
-            "The machine is currently classified as HEALTHY."
-        )
 
     else:
 
@@ -612,9 +640,7 @@ with left_column:
 
             if problem in machine["faults"]:
 
-                st.write(
-                    machine["faults"][problem]
-                )
+                st.write(machine["faults"][problem])
 
 
 with right_column:
@@ -627,11 +653,7 @@ with right_column:
 
         value = sensor["value"]
 
-        if (
-            sensor["normal_min"]
-            <= value
-            <= sensor["normal_max"]
-        ):
+        if sensor["normal_min"] <= value <= sensor["normal_max"]:
 
             sensor_status = "🟢 Normal"
 
@@ -679,28 +701,18 @@ fig = go.Figure()
 fig.add_trace(
 
     go.Bar(
-
         x=parameter_names,
         y=parameter_values,
-
         text=parameter_values,
-
         textposition="auto"
-
     )
-
 )
 
 fig.update_layout(
-
     title="Current Sensor Readings",
-
     xaxis_title="Machine Parameters",
-
     yaxis_title="Sensor Values",
-
     height=500
-
 )
 
 st.plotly_chart(
@@ -710,7 +722,7 @@ st.plotly_chart(
 
 
 # ---------------------------------------------------
-# ADD DATA TO HISTORY
+# HISTORY
 # ---------------------------------------------------
 
 st.divider()
@@ -730,14 +742,11 @@ if st.button("➕ Save Current Reading"):
         "Status": status,
 
         "Risk (%)": risk
-
     }
 
     for sensor in sensor_data:
 
-        history_entry[
-            sensor["name"]
-        ] = sensor["value"]
+        history_entry[sensor["name"]] = sensor["value"]
 
     st.session_state.history.append(
         history_entry
@@ -747,10 +756,6 @@ if st.button("➕ Save Current Reading"):
         "Current machine reading saved successfully!"
     )
 
-
-# ---------------------------------------------------
-# DISPLAY HISTORY
-# ---------------------------------------------------
 
 if len(st.session_state.history) > 0:
 
@@ -777,7 +782,6 @@ if len(st.session_state.history) > 0:
         file_name="machine_maintenance_data.csv",
 
         mime="text/csv"
-
     )
 
 else:
@@ -795,102 +799,73 @@ st.divider()
 
 st.subheader("🔄 How the System Works")
 
-st.markdown(
+st.markdown("""
 
-    """
-    ### System Flow
+### System Flow
 
-    **Machine**
+**Machine**
 
-    ↓
+⬇️
 
-    **Sensors**
+**Sensors**
 
-    ↓
+⬇️
 
-    **ESP32 / Arduino**
+**Data Collection**
 
-    ↓
+⬇️
 
-    **Sensor Data Collection**
+**AI-Based Analysis**
 
-    ↓
+⬇️
 
-    **AI / Machine Analysis**
+**Machine Health Status**
 
-    ↓
+⬇️
 
-    **Health Status**
+**Fault Diagnosis**
 
-    ↓
+⬇️
 
-    **Fault Diagnosis**
+**Maintenance Recommendation**
 
-    ↓
-
-    **Maintenance Recommendation**
-    """
-
-)
+""")
 
 
 # ---------------------------------------------------
-# PROJECT DEVELOPMENT
+# PROJECT INFORMATION
 # ---------------------------------------------------
 
 st.divider()
 
-st.subheader("🚀 Future Development")
+st.subheader("🎓 Project Machines")
 
-st.markdown(
+st.markdown("""
 
-    """
-    ### Stage 1 — Current Version
-    - Machine selection
-    - Simulated sensor data
-    - Health monitoring
-    - Risk calculation
-    - Fault diagnosis
+### 🚗 Petrol Engine
+Monitors engine temperature, vibration, RPM, oil pressure and battery voltage.
 
-    ### Stage 2 — Hardware Integration
-    - Connect ESP32 or Arduino
-    - Add real sensors
-    - Collect real machine data
+### 🔧 Reciprocating Pump
+Monitors temperature, vibration, motor current, RPM, pressure and flow rate.
 
-    ### Stage 3 — Machine Learning
-    - Train separate AI models
-    - Learn normal machine behaviour
-    - Detect abnormal patterns
-    - Improve fault prediction
+### ⚡ Hydraulic Turbine
+Monitors temperature, vibration, RPM, hydraulic pressure and water flow rate.
 
-    ### Stage 4 — Real-Time Monitoring
-    - Wi-Fi data transmission
-    - Live sensor readings
-    - Cloud monitoring
-    - Automated maintenance alerts
-    """
+""")
 
-)
-
-
-# ---------------------------------------------------
-# IMPORTANT PROJECT NOTE
-# ---------------------------------------------------
 
 st.divider()
 
-st.info(
+st.info("""
 
-    """
-    🎓 PROJECT NOTE:
+🎓 PROJECT NOTE
 
-    This current version is an educational prototype.
-    The present health analysis uses transparent engineering
-    rules and demonstration limits.
+This is a multipurpose predictive maintenance prototype for mechanical
+engineering applications.
 
-    In the next stage, these rules can be replaced with
-    separate machine-learning models trained using real
-    sensor data collected from each machine.
-    """
+Currently, the system uses engineering-based threshold analysis.
 
-)
+In the future, real sensors, ESP32/Arduino and machine-learning models
+can be connected for real-time predictive maintenance.
+
+""")
