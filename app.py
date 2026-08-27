@@ -2,612 +2,906 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
+from io import BytesIO
 
-# ---------------------------------------------------------
-# PAGE SETTINGS
-# ---------------------------------------------------------
+
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
 
 st.set_page_config(
-    page_title="AI Predictive Maintenance",
+    page_title="AI Predictive Maintenance System",
     page_icon="⚙️",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ---------------------------------------------------------
+
+# =========================================================
+# PROFESSIONAL DESIGN
+# =========================================================
+
+st.markdown(
+    """
+    <style>
+
+    .stApp {
+        background-color: #07111f;
+        color: #e8eef7;
+    }
+
+    [data-testid="stSidebar"] {
+        background-color: #091524;
+        border-right: 1px solid #1d3045;
+    }
+
+    .main-title {
+        font-size: 32px;
+        font-weight: 700;
+        color: #f4f7fb;
+        margin-bottom: 0px;
+    }
+
+    .subtitle {
+        font-size: 16px;
+        color: #9eafc2;
+        margin-top: -5px;
+        margin-bottom: 25px;
+    }
+
+    .card {
+        background: linear-gradient(145deg, #0c1929, #0a1523);
+        border: 1px solid #20364d;
+        border-radius: 12px;
+        padding: 22px;
+        min-height: 150px;
+    }
+
+    .card-title {
+        font-size: 14px;
+        color: #aebdce;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .card-value {
+        font-size: 32px;
+        font-weight: 700;
+        text-align: center;
+        margin-top: 15px;
+    }
+
+    .card-text {
+        font-size: 15px;
+        text-align: center;
+        color: #9eafc2;
+    }
+
+    .section-box {
+        background-color: #0a1625;
+        border: 1px solid #20364d;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 10px;
+    }
+
+    .healthy {
+        color: #46d369;
+        font-weight: bold;
+    }
+
+    .warning {
+        color: #ffca28;
+        font-weight: bold;
+    }
+
+    .danger {
+        color: #ff4d4d;
+        font-weight: bold;
+    }
+
+    .small-label {
+        color: #9eafc2;
+        font-size: 13px;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# MACHINE PROFILES
+# =========================================================
+
+MACHINES = {
+
+    "Petrol Engine": {
+        "icon": "🚗",
+        "parameters": {
+            "Temperature (°C)": [20, 140, 88, 70, 100],
+            "Vibration (mm/s)": [0.0, 20.0, 3.2, 0.0, 5.0],
+            "RPM": [500, 8000, 2450, 700, 6000],
+            "Oil Pressure (bar)": [0.0, 10.0, 4.1, 2.0, 6.0]
+        }
+    },
+
+    "Reciprocating Pump": {
+        "icon": "🔧",
+        "parameters": {
+            "Temperature (°C)": [20, 120, 65, 40, 90],
+            "Vibration (mm/s)": [0.0, 20.0, 2.5, 0.0, 4.5],
+            "Pressure (bar)": [0.0, 20.0, 8.0, 5.0, 12.0],
+            "Flow Rate (L/min)": [0.0, 200.0, 90.0, 60.0, 140.0]
+        }
+    },
+
+    "Hydraulic Turbine": {
+        "icon": "⚡",
+        "parameters": {
+            "Temperature (°C)": [20, 120, 55, 30, 80],
+            "Vibration (mm/s)": [0.0, 20.0, 2.0, 0.0, 4.0],
+            "RPM": [100, 5000, 1800, 800, 3500],
+            "Water Flow (L/s)": [0.0, 500.0, 180.0, 100.0, 350.0]
+        }
+    }
+}
+
+
+# =========================================================
 # SESSION STATE
-# ---------------------------------------------------------
+# =========================================================
 
-if "saved_readings" not in st.session_state:
-    st.session_state.saved_readings = []
+if "machine" not in st.session_state:
+    st.session_state.machine = "Petrol Engine"
 
-# ---------------------------------------------------------
-# MACHINE SELECTION
-# ---------------------------------------------------------
+if "readings" not in st.session_state:
+    st.session_state.readings = {}
 
-machine_options = [
-    "Reciprocating Pump",
-    "Hydraulic Turbine",
-    "Petrol Engine"
-]
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-# ---------------------------------------------------------
-# SIDEBAR
-# ---------------------------------------------------------
 
-st.sidebar.title("⚙️ CONTROL PANEL")
+# =========================================================
+# FUNCTIONS
+# =========================================================
 
-machine = st.sidebar.selectbox(
-    "Select Machine",
-    machine_options
-)
+def calculate_parameter_risk(value, normal_min, normal_max, min_value, max_value):
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("📡 Sensor Readings")
+    if normal_min <= value <= normal_max:
+        return 0
 
-temperature = st.sidebar.slider(
-    "Temperature (°C)",
-    0.0,
-    150.0,
-    45.0,
-    0.5
-)
+    if value < normal_min:
+        distance = normal_min - value
+        total = normal_min - min_value
+    else:
+        distance = value - normal_max
+        total = max_value - normal_max
 
-vibration = st.sidebar.slider(
-    "Vibration (mm/s)",
-    0.0,
-    20.0,
-    2.0,
-    0.1
-)
+    if total <= 0:
+        return 0
 
-current = st.sidebar.slider(
-    "Current (A)",
-    0.0,
-    100.0,
-    5.0,
-    0.1
-)
+    risk = (distance / total) * 100
 
-rpm = st.sidebar.slider(
-    "RPM",
-    0,
-    5000,
-    1500,
-    10
-)
+    return min(round(risk, 1), 100)
 
-# ---------------------------------------------------------
-# MACHINE-SPECIFIC SENSOR
-# ---------------------------------------------------------
 
-if machine == "Reciprocating Pump":
+def get_system_data():
 
-    extra_name = "Pressure (bar)"
+    machine = st.session_state.machine
+    profile = MACHINES[machine]
 
-    extra_value = st.sidebar.slider(
-        "Pressure (bar)",
-        0.0,
-        30.0,
-        5.0,
-        0.1
+    parameters = profile["parameters"]
+
+    values = {}
+    risks = {}
+
+    for name, data in parameters.items():
+
+        minimum = data[0]
+        maximum = data[1]
+        default = data[2]
+        normal_min = data[3]
+        normal_max = data[4]
+
+        value = st.session_state.readings.get(
+            name,
+            default
+        )
+
+        values[name] = value
+
+        risks[name] = calculate_parameter_risk(
+            value,
+            normal_min,
+            normal_max,
+            minimum,
+            maximum
+        )
+
+    total_risk = round(
+        sum(risks.values()) / len(risks),
+        1
     )
 
-elif machine == "Hydraulic Turbine":
-
-    extra_name = "Water Flow (L/s)"
-
-    extra_value = st.sidebar.slider(
-        "Water Flow (L/s)",
-        0.0,
-        500.0,
-        100.0,
-        1.0
+    health_score = round(
+        max(0, 100 - total_risk),
+        1
     )
 
-else:
+    if total_risk <= 20:
+        status = "HEALTHY"
+        status_class = "healthy"
 
-    extra_name = "Oil Pressure (bar)"
-
-    extra_value = st.sidebar.slider(
-        "Oil Pressure (bar)",
-        0.0,
-        15.0,
-        5.0,
-        0.1
-    )
-
-# ---------------------------------------------------------
-# AI ANALYSIS FUNCTION
-# ---------------------------------------------------------
-
-def analyse_machine():
-
-    risk = 0
-    faults = []
-    positions = []
-    recommendations = []
-
-    # TEMPERATURE
-
-    if temperature > 110:
-        risk += 35
-        faults.append("Critical Overheating")
-        positions.append("Cooling System")
-        recommendations.append(
-            "Stop the machine and inspect the cooling system."
-        )
-
-    elif temperature > 85:
-        risk += 20
-        faults.append("High Temperature")
-        positions.append("Cooling System")
-        recommendations.append(
-            "Inspect coolant, ventilation and heat removal."
-        )
-
-    # VIBRATION
-
-    if vibration > 12:
-        risk += 35
-        faults.append("Critical Vibration")
-        positions.append("Bearing and Shaft Assembly")
-        recommendations.append(
-            "Inspect bearings, shaft alignment and mounting."
-        )
-
-    elif vibration > 7:
-        risk += 20
-        faults.append("High Vibration")
-        positions.append("Bearing Assembly")
-        recommendations.append(
-            "Check bearing condition and alignment."
-        )
-
-    # CURRENT
-
-    if current > 80:
-        risk += 25
-        faults.append("High Electrical Load")
-        positions.append("Motor or Electrical System")
-        recommendations.append(
-            "Inspect electrical load and motor connections."
-        )
-
-    elif current > 50:
-        risk += 15
-        faults.append("Increased Current")
-        positions.append("Electrical System")
-        recommendations.append(
-            "Monitor electrical load and motor performance."
-        )
-
-    # RPM
-
-    if rpm < 500 or rpm > 3500:
-        risk += 20
-        faults.append("Abnormal RPM")
-        positions.append("Drive System")
-        recommendations.append(
-            "Inspect the rotating and speed control system."
-        )
-
-    # RECIPROCATING PUMP
-
-    if machine == "Reciprocating Pump":
-
-        if extra_value < 2:
-            risk += 20
-            faults.append("Low Pressure")
-            positions.append("Pump Valve or Piston")
-            recommendations.append(
-                "Check pump valves, piston and possible leakage."
-            )
-
-        elif extra_value > 20:
-            risk += 20
-            faults.append("High Pressure")
-            positions.append("Delivery Line")
-            recommendations.append(
-                "Check for blockage in the delivery line."
-            )
-
-    # HYDRAULIC TURBINE
-
-    elif machine == "Hydraulic Turbine":
-
-        if extra_value < 40:
-            risk += 20
-            faults.append("Low Water Flow")
-            positions.append("Water Inlet or Nozzle")
-            recommendations.append(
-                "Inspect the water inlet and turbine nozzle."
-            )
-
-        elif extra_value > 400:
-            risk += 15
-            faults.append("Excessive Water Flow")
-            positions.append("Flow Control System")
-            recommendations.append(
-                "Inspect the flow control system."
-            )
-
-    # PETROL ENGINE
-
-    elif machine == "Petrol Engine":
-
-        if extra_value < 2:
-            risk += 25
-            faults.append("Low Oil Pressure")
-            positions.append("Lubrication System")
-            recommendations.append(
-                "Check engine oil level and oil pump."
-            )
-
-        elif extra_value > 10:
-            risk += 15
-            faults.append("High Oil Pressure")
-            positions.append("Oil Circulation System")
-            recommendations.append(
-                "Inspect oil passages and pressure regulation."
-            )
-
-    # LIMIT RISK
-
-    if risk > 100:
-        risk = 100
-
-    # MACHINE CONDITION
-
-    if risk < 20:
-        condition = "HEALTHY"
-        message = "Machine is operating within the normal range."
-
-    elif risk < 45:
-        condition = "MONITOR"
-        message = "Minor abnormalities detected. Continue monitoring."
-
-    elif risk < 70:
-        condition = "WARNING"
-        message = "Maintenance inspection is recommended."
+    elif total_risk <= 50:
+        status = "WARNING"
+        status_class = "warning"
 
     else:
-        condition = "CRITICAL"
-        message = "Immediate inspection is recommended."
+        status = "HIGH RISK"
+        status_class = "danger"
 
-    # DEFAULT RESULTS
+    fault_parameter = max(
+        risks,
+        key=risks.get
+    )
 
-    if len(faults) == 0:
-        faults.append("No Major Fault Detected")
-
-    if len(positions) == 0:
-        positions.append("No Critical Fault Position Detected")
-
-    if len(recommendations) == 0:
-        recommendations.append(
-            "Continue normal operation and regular monitoring."
-        )
-
-    return risk, condition, message, faults, positions, recommendations
+    return (
+        values,
+        risks,
+        total_risk,
+        health_score,
+        status,
+        status_class,
+        fault_parameter
+    )
 
 
-# ---------------------------------------------------------
-# RUN ANALYSIS
-# ---------------------------------------------------------
+def get_recommendation(parameter, machine):
 
-risk, condition, message, faults, positions, recommendations = analyse_machine()
+    recommendations = {
 
-# ---------------------------------------------------------
-# HEADER
-# ---------------------------------------------------------
+        "Temperature (°C)":
+        "Inspect the cooling system and check for overheating.",
 
-st.title("⚙️ AI Predictive Maintenance System")
+        "Vibration (mm/s)":
+        "Inspect bearings, alignment, mounting and rotating components.",
 
-st.caption(
-    "Machine Condition Monitoring • Fault Detection • Failure Risk Prediction"
-)
+        "RPM":
+        "Check the speed control system and mechanical load.",
 
-st.markdown("---")
+        "Oil Pressure (bar)":
+        "Inspect lubrication level, oil pump and possible leakage.",
 
-# ---------------------------------------------------------
-# SECTION 1 - MACHINE READINGS
-# ---------------------------------------------------------
+        "Pressure (bar)":
+        "Check valves, seals and the pressure system.",
 
-st.header("📊 1. Live Machine Readings")
+        "Flow Rate (L/min)":
+        "Inspect pump valves, suction line and possible blockage.",
 
-col1, col2, col3, col4, col5 = st.columns(5)
+        "Water Flow (L/s)":
+        "Inspect turbine inlet, flow channel and water supply."
+    }
 
-col1.metric(
-    "Temperature",
-    str(temperature) + " °C"
-)
+    return recommendations.get(
+        parameter,
+        "Perform a complete machine inspection."
+    )
 
-col2.metric(
-    "Vibration",
-    str(vibration) + " mm/s"
-)
 
-col3.metric(
-    "Current",
-    str(current) + " A"
-)
+def create_gauge(value, title, color):
 
-col4.metric(
-    "RPM",
-    str(rpm)
-)
-
-col5.metric(
-    extra_name,
-    str(extra_value)
-)
-
-st.markdown("---")
-
-# ---------------------------------------------------------
-# SECTION 2 - CONDITION AND FAILURE RISK
-# ---------------------------------------------------------
-
-st.header("🤖 2. AI Condition Analysis")
-
-left_column, right_column = st.columns(2)
-
-with left_column:
-
-    st.subheader("Machine Condition")
-
-    if condition == "HEALTHY":
-        st.success("🟢 " + condition)
-
-    elif condition == "MONITOR":
-        st.info("🔵 " + condition)
-
-    elif condition == "WARNING":
-        st.warning("🟠 " + condition)
-
-    else:
-        st.error("🔴 " + condition)
-
-    st.write(message)
-
-with right_column:
-
-    st.subheader("Failure Risk")
-
-    gauge = go.Figure(
+    figure = go.Figure(
         go.Indicator(
             mode="gauge+number",
-            value=risk,
-            number={"suffix": "%"},
-            title={"text": "Predicted Failure Risk"},
+            value=value,
+            title={
+                "text": title,
+                "font": {"color": "#e8eef7"}
+            },
+            number={
+                "font": {"color": "#ffffff"}
+            },
             gauge={
-                "axis": {"range": [0, 100]},
-                "bar": {"color": "red"},
+                "axis": {
+                    "range": [0, 100],
+                    "tickcolor": "#9eafc2"
+                },
+
+                "bar": {
+                    "color": color
+                },
+
+                "bgcolor": "#0a1625",
+
                 "steps": [
-                    {"range": [0, 25], "color": "lightgreen"},
-                    {"range": [25, 50], "color": "yellow"},
-                    {"range": [50, 75], "color": "orange"},
-                    {"range": [75, 100], "color": "lightcoral"}
+                    {
+                        "range": [0, 20],
+                        "color": "#153020"
+                    },
+                    {
+                        "range": [20, 50],
+                        "color": "#332b0d"
+                    },
+                    {
+                        "range": [50, 100],
+                        "color": "#351515"
+                    }
                 ]
             }
         )
     )
 
-    gauge.update_layout(
-        height=320
+    figure.update_layout(
+        height=260,
+        paper_bgcolor="#0a1625",
+        font_color="#e8eef7",
+        margin=dict(l=20, r=20, t=50, b=10)
     )
 
-    st.plotly_chart(
-        gauge,
-        use_container_width=True
+    return figure
+
+
+# =========================================================
+# SIDEBAR
+# =========================================================
+
+with st.sidebar:
+
+    st.markdown("# ⚙️ AI-PMS")
+    st.caption("AI Predictive Maintenance System")
+
+    st.divider()
+
+    st.markdown("### SELECT MACHINE")
+
+    machine = st.selectbox(
+        "Choose a machine to monitor",
+        list(MACHINES.keys()),
+        index=list(MACHINES.keys()).index(
+            st.session_state.machine
+        )
     )
 
-st.markdown("---")
+    st.session_state.machine = machine
 
-# ---------------------------------------------------------
-# SECTION 3 - FAULT POSITION
-# ---------------------------------------------------------
-
-st.header("📍 3. Fault Position Detection")
-
-fault_data = pd.DataFrame(
-    {
-        "Detected Fault": faults,
-        "Possible Fault Position": positions
-    }
-)
-
-st.dataframe(
-    fault_data,
-    use_container_width=True,
-    hide_index=True
-)
-
-st.markdown("---")
-
-# ---------------------------------------------------------
-# SECTION 4 - COMPONENT HEALTH
-# ---------------------------------------------------------
-
-st.header("📈 4. Component Health Chart")
-
-components = [
-    "Temperature System",
-    "Bearings",
-    "Electrical System",
-    "Drive System",
-    "Machine Specific Part"
-]
-
-health = [100, 100, 100, 100, 100]
-
-if temperature > 85:
-    health[0] = max(20, 100 - risk)
-
-if vibration > 7:
-    health[1] = max(20, 100 - risk)
-
-if current > 50:
-    health[2] = max(20, 100 - risk)
-
-if rpm < 500 or rpm > 3500:
-    health[3] = max(20, 100 - risk)
-
-if machine == "Reciprocating Pump":
-    if extra_value < 2 or extra_value > 20:
-        health[4] = max(20, 100 - risk)
-
-elif machine == "Hydraulic Turbine":
-    if extra_value < 40 or extra_value > 400:
-        health[4] = max(20, 100 - risk)
-
-else:
-    if extra_value < 2 or extra_value > 10:
-        health[4] = max(20, 100 - risk)
-
-chart = go.Figure(
-    go.Bar(
-        x=components,
-        y=health
+    st.markdown(
+        f"### {MACHINES[machine]['icon']} {machine}"
     )
-)
 
-chart.update_layout(
-    title="Component Health Percentage",
-    xaxis_title="Machine Component",
-    yaxis_title="Health (%)",
-    yaxis_range=[0, 100],
-    height=400
-)
+    st.divider()
 
-st.plotly_chart(
-    chart,
-    use_container_width=True
-)
+    st.markdown("### SYSTEM STATUS")
+    st.success("🟢 System Online")
 
-st.markdown("---")
+    st.caption(
+        "Machine monitoring, fault detection and predictive maintenance"
+    )
 
-# ---------------------------------------------------------
-# SECTION 5 - MAINTENANCE RECOMMENDATIONS
-# ---------------------------------------------------------
 
-st.header("🔧 5. AI Maintenance Recommendation")
+# =========================================================
+# DASHBOARD PAGE
+# =========================================================
 
-for item in recommendations:
-    st.info(item)
+def dashboard():
 
-st.markdown("---")
+    (
+        values,
+        risks,
+        total_risk,
+        health_score,
+        status,
+        status_class,
+        fault_parameter
+    ) = get_system_data()
 
-# ---------------------------------------------------------
-# SECTION 6 - SAVE READING
-# ---------------------------------------------------------
+    machine = st.session_state.machine
 
-st.header("💾 6. Save and Download Reading")
+    st.markdown(
+        '<div class="main-title">AI Predictive Maintenance System</div>',
+        unsafe_allow_html=True
+    )
 
-save_column, download_column = st.columns(2)
+    st.markdown(
+        '<div class="subtitle">Intelligent Machine Monitoring & Fault Diagnosis</div>',
+        unsafe_allow_html=True
+    )
 
-with save_column:
+    col1, col2, col3, col4 = st.columns(4)
 
-    if st.button("💾 Save Current Reading"):
+    with col1:
 
-        reading = {
-            "Date and Time": datetime.now().strftime(
-                "%Y-%m-%d %H:%M:%S"
+        st.markdown(
+            f"""
+            <div class="card">
+            <div class="card-title">MACHINE STATUS</div>
+            <div class="card-value {status_class}">{status}</div>
+            <div class="card-text">{machine}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col2:
+
+        st.markdown(
+            f"""
+            <div class="card">
+            <div class="card-title">HEALTH SCORE</div>
+            <div class="card-value healthy">{health_score}%</div>
+            <div class="card-text">Machine Health</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col3:
+
+        risk_class = (
+            "healthy"
+            if total_risk <= 20
+            else "warning"
+            if total_risk <= 50
+            else "danger"
+        )
+
+        st.markdown(
+            f"""
+            <div class="card">
+            <div class="card-title">RISK OF FAILURE</div>
+            <div class="card-value {risk_class}">{total_risk}%</div>
+            <div class="card-text">Failure Probability</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col4:
+
+        st.markdown(
+            f"""
+            <div class="card">
+            <div class="card-title">SENSORS ACTIVE</div>
+            <div class="card-value">4 / 4</div>
+            <div class="card-text">All Sensors Online</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.divider()
+
+    left, right = st.columns([1, 1])
+
+    with left:
+
+        st.subheader("⚠️ Fault Diagnosis")
+
+        chart = go.Figure(
+            go.Bar(
+                x=list(risks.keys()),
+                y=list(risks.values()),
+                marker_color=[
+                    "#2ecc71"
+                    if risk <= 20
+                    else "#f1c40f"
+                    if risk <= 50
+                    else "#e74c3c"
+                    for risk in risks.values()
+                ]
+            )
+        )
+
+        chart.update_layout(
+            title="Fault Severity by Parameter",
+            yaxis_title="Risk (%)",
+            yaxis_range=[0, 100],
+            paper_bgcolor="#0a1625",
+            plot_bgcolor="#0a1625",
+            font_color="#e8eef7",
+            height=350
+        )
+
+        st.plotly_chart(
+            chart,
+            use_container_width=True
+        )
+
+        st.markdown("### Primary Fault Location")
+
+        st.warning(
+            f"⚠️ **{fault_parameter}** requires the most attention."
+        )
+
+        st.markdown("### Recommendation")
+
+        st.info(
+            get_recommendation(
+                fault_parameter,
+                machine
+            )
+        )
+
+    with right:
+
+        st.subheader("📊 Risk of Failure Analysis")
+
+        color = (
+            "#2ecc71"
+            if total_risk <= 20
+            else "#f1c40f"
+            if total_risk <= 50
+            else "#e74c3c"
+        )
+
+        st.plotly_chart(
+            create_gauge(
+                total_risk,
+                "Failure Risk (%)",
+                color
             ),
-            "Machine": machine,
-            "Temperature": temperature,
-            "Vibration": vibration,
-            "Current": current,
-            "RPM": rpm,
-            extra_name: extra_value,
-            "Condition": condition,
-            "Failure Risk": risk
-        }
+            use_container_width=True
+        )
 
-        st.session_state.saved_readings.append(reading)
+        if total_risk <= 20:
+            st.success(
+                "The machine is operating within safe limits."
+            )
 
-        st.success("Reading saved successfully!")
+        elif total_risk <= 50:
+            st.warning(
+                "The machine requires inspection and preventive maintenance."
+            )
 
-with download_column:
+        else:
+            st.error(
+                "High risk detected. Immediate inspection is recommended."
+            )
 
-    report = "AI PREDICTIVE MAINTENANCE REPORT\n\n"
+    st.divider()
 
-    report += "Machine: " + machine + "\n"
-    report += "Date: " + datetime.now().strftime(
-        "%Y-%m-%d %H:%M:%S"
-    ) + "\n\n"
+    st.subheader("📡 Live Sensor Readings")
 
-    report += "MACHINE READINGS\n"
-    report += "Temperature: " + str(temperature) + " °C\n"
-    report += "Vibration: " + str(vibration) + " mm/s\n"
-    report += "Current: " + str(current) + " A\n"
-    report += "RPM: " + str(rpm) + "\n"
-    report += extra_name + ": " + str(extra_value) + "\n\n"
+    rows = []
 
-    report += "AI ANALYSIS\n"
-    report += "Condition: " + condition + "\n"
-    report += "Failure Risk: " + str(risk) + "%\n\n"
+    for parameter, value in values.items():
 
-    report += "DETECTED FAULTS\n"
+        risk = risks[parameter]
 
-    for fault in faults:
-        report += "- " + fault + "\n"
+        if risk <= 20:
+            parameter_status = "Normal"
+        elif risk <= 50:
+            parameter_status = "Warning"
+        else:
+            parameter_status = "Critical"
 
-    report += "\nFAULT POSITIONS\n"
+        rows.append(
+            {
+                "Parameter": parameter,
+                "Current Value": value,
+                "Risk (%)": risk,
+                "Status": parameter_status
+            }
+        )
 
-    for position in positions:
-        report += "- " + position + "\n"
-
-    report += "\nMAINTENANCE RECOMMENDATIONS\n"
-
-    for recommendation in recommendations:
-        report += "- " + recommendation + "\n"
-
-    st.download_button(
-        label="⬇️ Download Maintenance Report",
-        data=report,
-        file_name="maintenance_report.txt",
-        mime="text/plain"
-    )
-
-st.markdown("---")
-
-# ---------------------------------------------------------
-# SECTION 7 - SAVED READINGS
-# ---------------------------------------------------------
-
-st.header("📋 7. Saved Readings")
-
-if len(st.session_state.saved_readings) > 0:
-
-    saved_data = pd.DataFrame(
-        st.session_state.saved_readings
-    )
+    dataframe = pd.DataFrame(rows)
 
     st.dataframe(
-        saved_data,
+        dataframe,
         use_container_width=True,
         hide_index=True
     )
 
-    csv_data = saved_data.to_csv(
+
+# =========================================================
+# LIVE MONITORING PAGE
+# =========================================================
+
+def live_monitoring():
+
+    machine = st.session_state.machine
+    parameters = MACHINES[machine]["parameters"]
+
+    st.title("📡 Live Monitoring")
+    st.caption(
+        f"Real-time sensor monitoring for {machine}"
+    )
+
+    st.divider()
+
+    columns = st.columns(2)
+
+    index = 0
+
+    for parameter, data in parameters.items():
+
+        with columns[index % 2]:
+
+            value = st.slider(
+                parameter,
+                min_value=float(data[0]),
+                max_value=float(data[1]),
+                value=float(
+                    st.session_state.readings.get(
+                        parameter,
+                        data[2]
+                    )
+                )
+            )
+
+            st.session_state.readings[parameter] = value
+
+        index += 1
+
+    st.divider()
+
+    if st.button(
+        "🔄 UPDATE READINGS",
+        use_container_width=True
+    ):
+        st.success("Sensor readings updated successfully.")
+
+    values, risks, total_risk, health_score, status, status_class, fault_parameter = get_system_data()
+
+    st.subheader("Current Monitoring Status")
+
+    col1, col2, col3 = st.columns(3)
+
+    col1.metric(
+        "Health Score",
+        f"{health_score}%"
+    )
+
+    col2.metric(
+        "Failure Risk",
+        f"{total_risk}%"
+    )
+
+    col3.metric(
+        "Status",
+        status
+    )
+
+
+# =========================================================
+# FAULT DIAGNOSIS PAGE
+# =========================================================
+
+def fault_diagnosis():
+
+    (
+        values,
+        risks,
+        total_risk,
+        health_score,
+        status,
+        status_class,
+        fault_parameter
+    ) = get_system_data()
+
+    st.title("⚠️ Fault Diagnosis")
+    st.caption(
+        "AI-based machine condition analysis"
+    )
+
+    st.divider()
+
+    st.subheader("Fault Severity Analysis")
+
+    figure = go.Figure()
+
+    figure.add_trace(
+        go.Bar(
+            x=list(risks.keys()),
+            y=list(risks.values()),
+            marker_color=[
+                "#2ecc71"
+                if value <= 20
+                else "#f1c40f"
+                if value <= 50
+                else "#e74c3c"
+                for value in risks.values()
+            ]
+        )
+    )
+
+    figure.update_layout(
+        yaxis_title="Severity (%)",
+        yaxis_range=[0, 100],
+        paper_bgcolor="#0a1625",
+        plot_bgcolor="#0a1625",
+        font_color="#ffffff"
+    )
+
+    st.plotly_chart(
+        figure,
+        use_container_width=True
+    )
+
+    st.subheader("🔍 Primary Fault Location")
+
+    risk_value = risks[fault_parameter]
+
+    if risk_value <= 20:
+        st.success(
+            f"{fault_parameter}: Operating normally."
+        )
+
+    elif risk_value <= 50:
+        st.warning(
+            f"{fault_parameter}: Moderate fault risk detected."
+        )
+
+    else:
+        st.error(
+            f"{fault_parameter}: High fault risk detected."
+        )
+
+    st.subheader("🛠 Recommended Maintenance Action")
+
+    st.info(
+        get_recommendation(
+            fault_parameter,
+            st.session_state.machine
+        )
+    )
+
+
+# =========================================================
+# HISTORY PAGE
+# =========================================================
+
+def history_records():
+
+    st.title("📜 History & Records")
+    st.caption(
+        "Saved machine monitoring readings"
+    )
+
+    st.divider()
+
+    if len(st.session_state.history) == 0:
+
+        st.info(
+            "No readings have been saved yet. "
+            "Go to Reports and save the current reading."
+        )
+
+    else:
+
+        history_data = pd.DataFrame(
+            st.session_state.history
+        )
+
+        st.dataframe(
+            history_data,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        if st.button(
+            "🗑 Clear History"
+        ):
+            st.session_state.history = []
+            st.rerun()
+
+
+# =========================================================
+# REPORTS PAGE
+# =========================================================
+
+def reports():
+
+    (
+        values,
+        risks,
+        total_risk,
+        health_score,
+        status,
+        status_class,
+        fault_parameter
+    ) = get_system_data()
+
+    machine = st.session_state.machine
+
+    st.title("📊 Save & Report")
+    st.caption(
+        "Save monitoring readings and generate reports"
+    )
+
+    st.divider()
+
+    st.subheader("💾 Save Current Reading")
+
+    if st.button(
+        "💾 SAVE CURRENT READING",
+        use_container_width=True
+    ):
+
+        record = {
+            "Date & Time": datetime.now().strftime(
+                "%d-%m-%Y %I:%M %p"
+            ),
+            "Machine": machine,
+            "Risk (%)": total_risk,
+            "Health Score (%)": health_score,
+            "Status": status
+        }
+
+        record.update(values)
+
+        st.session_state.history.append(
+            record
+        )
+
+        st.success(
+            "Reading saved successfully."
+        )
+
+    st.divider()
+
+    st.subheader("📥 Export Report")
+
+    report_data = pd.DataFrame(
+        [
+            {
+                "Parameter": parameter,
+                "Current Value": values[parameter],
+                "Risk (%)": risks[parameter]
+            }
+            for parameter in values
+        ]
+    )
+
+    csv = report_data.to_csv(
         index=False
     ).encode("utf-8")
 
     st.download_button(
-        label="⬇️ Download All Readings as CSV",
-        data=csv_data,
-        file_name="machine_readings.csv",
-        mime="text/csv"
+        label="⬇️ Download CSV Report",
+        data=csv,
+        file_name="predictive_maintenance_report.csv",
+        mime="text/csv",
+        use_container_width=True
     )
 
-else:
+    excel_file = BytesIO()
 
-    st.info(
-        "No readings saved yet."
+    with pd.ExcelWriter(
+        excel_file,
+        engine="openpyxl"
+    ) as writer:
+
+        report_data.to_excel(
+            writer,
+            index=False,
+            sheet_name="Maintenance Report"
+        )
+
+    st.download_button(
+        label="📊 Export to Excel",
+        data=excel_file.getvalue(),
+        file_name="predictive_maintenance_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
     )
 
-st.markdown("---")
 
-st.caption(
-    "AI Predictive Maintenance System | Mechanical Engineering College Project"
-)
+# =========================================================
+# SETTINGS PAGE
+# =========================================================
+
+def settings():
+
+    st.title("⚙️ Settings")
+    st.caption(
+        "Configure your AI Predictive Maintenance System"
+    )
+
+    st.divider()
+
+    st.subheader("System Configuration")
+
+    auto_update = st.checkbox(
+        "Enable automatic monitoring
